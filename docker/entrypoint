@@ -1,0 +1,31 @@
+# FixLab entrypoint. Selects which process the container runs; `command:`
+# in docker-compose overrides the image default ("all").
+#   entrypoint backend   — run only the Go FIX/REST backend (:8080)
+#   entrypoint frontend  — run only the Next.js standalone server (:3000)
+#   entrypoint all       — backend in the background, frontend in the foreground
+# The foreground process is exec'd so it receives container signals (PID 1).
+set -eu
+
+mode="${1:-all}"
+
+case "$mode" in
+  backend)
+    exec /app/fixlab-server
+    ;;
+  frontend)
+    cd /app/frontend && exec node server.js
+    ;;
+  all)
+    /app/fixlab-server &
+    backend_pid=$!
+    cd /app/frontend
+    # Keep the container alive as long as the backend runs: if it exits,
+    # kill the foreground node process so the container stops loudly.
+    (wait "$backend_pid"; kill -TERM 1) &
+    exec node server.js
+    ;;
+  *)
+    echo "unknown mode: $mode (want: backend | frontend | all)" >&2
+    exit 1
+    ;;
+esac

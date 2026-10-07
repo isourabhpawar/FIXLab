@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #0a0e14;
+  color: #e6e9f0;
+}
+
+/* Slim scrollbars for the message feed */
+.feed-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.feed-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.feed-scroll::-webkit-scrollbar-thumb {
+  background: #232c3d;
+  border-radius: 4px;
+}

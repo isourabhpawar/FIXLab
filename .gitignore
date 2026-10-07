@@ -1,0 +1,26 @@
+# build outputs
+bin/
+dist/
+*.log
+
+# frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+
+# go
+*.test
+*.out
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# secrets (keep .env.production.example)
+.env
+.env.production
+*.pem
+*.key
+!deployment/.env.production.example

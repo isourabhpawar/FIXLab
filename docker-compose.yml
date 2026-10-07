@@ -1,0 +1,63 @@
+# FixLab compose: backend (Go FIX engine + REST API) and frontend
+# (Next.js standalone) as two services from one image, split by `command:`.
+#
+# Networking (spec §14): run a TCP load balancer — NOT an HTTP LB — in front
+# of the FIX gateway for raw FIX TCP; single node is acceptable for V1.
+
+services:
+  backend:
+    build:
+      context: .
+      # Bake the public backend origin into the frontend bundle at build
+      # time; only needed if browsers reach the backend at another host.
+      args:
+        NEXT_PUBLIC_FIXLAB_API_URL: http://localhost:8080
+    command: ["backend"]
+    ports:
+      - "8080:8080"
+      # Documented subset of the FIX port pool. Map the full 10000-20000
+      # range instead for production-grade capacity:
+      #   "10000-20000:10000-20000"
+      # with FIXLAB_PORT_MIN=10000 / FIXLAB_PORT_MAX=20000.
+      - "10000-10099:10000-10099"
+    environment:
+      FIXLAB_HTTP_ADDR: ":8080"
+      FIXLAB_PORT_MIN: "10000"
+      FIXLAB_PORT_MAX: "10099"
+      FIXLAB_PUBLIC_HOST: "${FIXLAB_PUBLIC_HOST:-127.0.0.1}"
+      # TLS: mount a real certificate + key (e.g. Let's Encrypt /
+      # cert-manager) and point these at the mounted paths. Dev builds
+      # generate a self-signed cert at startup; the frontend shows its
+      # SHA-256 fingerprint on each TLS session for out-of-band verification.
+      # FIXLAB_TLS_CERT: /certs/fixlab.crt
+      # FIXLAB_TLS_KEY: /certs/fixlab.key
+      # FIXLAB_TLS_INSECURE_SKIP_VERIFY: "false" # initiator-side verify skip; keep false in prod
+    # volumes:
+    #   - ./certs:/certs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8080/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_FIXLAB_API_URL: http://localhost:8080
+    command: ["frontend"]
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
